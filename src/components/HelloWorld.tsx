@@ -12,6 +12,8 @@
 interface Props {
   /** Main message to display */
   message: string;
+  /** Optional subtitle text */
+  subtitle?: string;
   /** Recipient name for the greeting */
   name?: string;
   /** Hex accent color for the border and heading */
@@ -23,6 +25,7 @@ interface Props {
 export default function HelloWorld({
   message,
   name,
+  subtitle,
   accentColor = '#2563eb',
   emoji = '👋',
 }: Props) {
@@ -35,6 +38,9 @@ export default function HelloWorld({
         {emoji} Hello{name ? `, ${name}` : ''}!
       </h2>
       <p className="text-gray-600 text-sm leading-relaxed">{message}</p>
+      {subtitle && (
+        <p className="text-gray-400 text-xs mt-1">{subtitle}</p>
+      )}
       <div
         className="inline-block rounded-full px-3 py-1 text-xs font-medium text-white"
         style={{ backgroundColor: accentColor }}
