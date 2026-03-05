@@ -276,6 +276,108 @@ function FormRenderer({ template, data }: { template: ComponentTemplate; data: R
   );
 }
 
+function renderHelloWorld(data: Record<string, any>) {
+  const accentColor = data.accentColor || '#2563eb';
+  const name = data.name ? `, ${data.name}` : '';
+  const emoji = data.emoji || '👋';
+
+  return (
+    <Card className="w-full border-2 text-center" style={{ borderColor: accentColor }}>
+      <CardHeader>
+        <CardTitle className="text-2xl" style={{ color: accentColor }}>
+          {emoji} Hello{name}!
+        </CardTitle>
+        {data.message && (
+          <p className="text-sm text-muted-foreground leading-relaxed">{data.message}</p>
+        )}
+      </CardHeader>
+      <CardContent>
+        <div
+          className="inline-block rounded-full px-3 py-1 text-xs font-medium text-white"
+          style={{ backgroundColor: accentColor }}
+        >
+          Mobeus Component Discovery ✓
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Generic fallback renderer for auto-discovered component types.
+ * Iterates schema properties (required first) and renders each field
+ * as a label: value pair, so any component registered via the
+ * component-discovery-service renders immediately without code changes.
+ */
+function renderGenericComponent(template: ComponentTemplate, data: Record<string, any>) {
+  const uiConfig = (template.uiConfig || {}) as Record<string, any>;
+  const accentColor = getAccentColor(uiConfig);
+  const schema = (template.schema || {}) as Record<string, any>;
+  const properties: Record<string, any> = schema.properties || {};
+  const required: string[] = Array.isArray(schema.required) ? schema.required : [];
+
+  // Sort keys: required first, then the rest
+  const allKeys = Object.keys(properties).length > 0
+    ? [
+        ...required.filter((k) => k in properties),
+        ...Object.keys(properties).filter((k) => !required.includes(k)),
+      ]
+    : Object.keys(data).filter((k) => k !== 'id');
+
+  const displayKeys = allKeys.length > 0 ? allKeys : Object.keys(data).filter((k) => k !== 'id');
+
+  if (displayKeys.length === 0 && !template.name) return null;
+
+  return (
+    <Card className="w-full border" style={{ borderColor: accentColor }}>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base" style={{ color: accentColor }}>
+            {template.name}
+          </CardTitle>
+          <Badge variant="outline" className="text-xs">
+            {template.type}
+          </Badge>
+        </div>
+        {(template as any).description && (
+          <p className="text-xs text-muted-foreground">{(template as any).description}</p>
+        )}
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {displayKeys.map((key) => {
+          const value = data[key];
+          if (value === undefined || value === null || value === '') return null;
+          const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase());
+          const isRequired = required.includes(key);
+
+          return (
+            <div key={key} className="flex items-start gap-2 text-sm">
+              <span className="min-w-24 font-medium text-muted-foreground">
+                {label}{isRequired && <span className="text-red-500">*</span>}
+              </span>
+              {Array.isArray(value) ? (
+                <div className="flex flex-wrap gap-1">
+                  {value.map((v, i) => (
+                    <Badge key={i} variant="secondary" className="text-xs">
+                      {String(v)}
+                    </Badge>
+                  ))}
+                </div>
+              ) : typeof value === 'boolean' ? (
+                <Badge variant={value ? 'default' : 'outline'} className="text-xs">
+                  {value ? 'Yes' : 'No'}
+                </Badge>
+              ) : (
+                <span className="text-foreground">{String(value)}</span>
+              )}
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function DynamicComponentRenderer({ template, data }: DynamicComponentRendererProps) {
   const mergedData = useMemo(() => {
     return mergeTemplateData(
@@ -305,7 +407,16 @@ export function DynamicComponentRenderer({ template, data }: DynamicComponentRen
     rendered = renderImageGallery(template, mergedData as Record<string, any>);
   }
 
-  if (!rendered) return null;
+  if (template.type === 'HelloWorld') {
+    rendered = renderHelloWorld(mergedData as Record<string, any>);
+  }
+
+  // Generic fallback: renders any auto-discovered component type as a structured data card.
+  // This ensures components registered via the component-discovery-service display immediately
+  // without requiring a new template rebuild.
+  if (!rendered) {
+    rendered = renderGenericComponent(template, mergedData as Record<string, any>);
+  }
 
   return (
     <div className="space-y-2">
