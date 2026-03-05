@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import BarChart from '@/components/BarChart';
 
 interface DynamicComponentRendererProps {
   template: ComponentTemplate;
@@ -359,7 +360,9 @@ function renderGenericComponent(template: ComponentTemplate, data: Record<string
                 <div className="flex flex-wrap gap-1">
                   {value.map((v, i) => (
                     <Badge key={i} variant="secondary" className="text-xs">
-                      {String(v)}
+                      {typeof v === 'object' && v !== null
+                        ? Object.entries(v).map(([k, val]) => `${k}: ${val}`).join(', ')
+                        : String(v)}
                     </Badge>
                   ))}
                 </div>
@@ -409,6 +412,20 @@ export function DynamicComponentRenderer({ template, data }: DynamicComponentRen
 
   if (template.type === 'HelloWorld') {
     rendered = renderHelloWorld(mergedData as Record<string, any>);
+  }
+
+  if (template.type === 'BarChart') {
+    const d = mergedData as Record<string, any>;
+    rendered = (
+      <BarChart
+        title={d.title}
+        bars={Array.isArray(d.bars) ? d.bars : []}
+        unit={d.unit}
+        maxValue={d.maxValue}
+        showValues={d.showValues}
+        accentColor={d.accentColor}
+      />
+    );
   }
 
   // Generic fallback: renders any auto-discovered component type as a structured data card.
